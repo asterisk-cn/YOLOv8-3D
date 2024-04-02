@@ -58,8 +58,8 @@ select_model = 'mobilenetv2'
 
 
 
-label_dir = '/home/bharath/Downloads/test_codes/3Dbbox/kitti/training/label_2/'
-image_dir = '/home/bharath/Downloads/test_codes/3Dbbox/kitti/training/image_2/'
+label_dir = '../3D-detection/KITTI3D/training/label_2/'
+image_dir = '../3D-detection/KITTI3D/training/image_2/'
 
 
 
@@ -233,7 +233,7 @@ def data_gen(all_objs, batch_size):
                 o_batch[idx, :] = orientation
                 c_batch[idx, :] = confidence
 
-            yield x_batch, [d_batch, o_batch, c_batch]
+            yield x_batch, (d_batch, o_batch, c_batch)
 
         if AUGMENTATION:
             x_batch = np.zeros((2 * batch_size, 224, 224, 3))
@@ -257,7 +257,7 @@ def data_gen(all_objs, batch_size):
                 o_batch[idx + batch_size, :] = orientation.copy()
                 c_batch[idx + batch_size, :] = confidence.copy()
 
-            yield x_batch, [d_batch, o_batch, c_batch]
+            yield x_batch, (d_batch, o_batch, c_batch)
 
         l_bound = r_bound
         r_bound = r_bound + batch_size
@@ -335,7 +335,7 @@ model = Model(inputs= base_model.input, outputs=[dimension, orientation, confide
 
 
 ###### Training ##########
-@tf.keras.saving.register_keras_serializable()
+@tf.keras.utils.register_keras_serializable()
 def orientation_loss(y_true, y_pred):
     # Find number of anchors
     anchors = tf.reduce_sum(tf.square(y_true), axis=2)
