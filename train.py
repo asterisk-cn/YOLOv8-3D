@@ -1,33 +1,32 @@
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'} to control the verbosity
 
 import tensorflow as tf
+
 print('\ntensorflow version : ',tf.__version__)
 print("\nNum GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 
 
+import copy
+import os
+from random import shuffle
+
+import cv2
+import imgaug.augmenters as iaa
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import tqdm
+from imgaug.augmentables import KeypointsOnImage
+from IPython.display import SVG
+from tensorflow.keras import backend as K
 from tensorflow.keras.applications import *
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from tensorflow.keras.layers import *
+from tensorflow.keras.losses import Loss
 from tensorflow.keras.models import *
 from tensorflow.keras.optimizers import *
-from tensorflow.keras.layers import *
-from tensorflow.keras.callbacks import TensorBoard, EarlyStopping, ModelCheckpoint
-from tensorflow.keras.losses import Loss
-
-
-from tensorflow.keras import backend as K
-from IPython.display import SVG
-import matplotlib.pyplot as plt
-
-import copy
-import cv2, os
-import numpy as np
-from random import shuffle
-import pandas as pd
-
-import tqdm
-import imgaug.augmenters as iaa
-from imgaug.augmentables import KeypointsOnImage
-
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
@@ -361,7 +360,7 @@ if __name__ == '__main__':
     if not os.path.exists(select_model):
         os.makedirs(select_model)
     early_stop  = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, mode='min', verbose=1)
-    checkpoint  = ModelCheckpoint('./'+select_model+'/'+select_model+'_weights.h5', monitor='val_loss', verbose=1, save_best_only=True)
+    checkpoint  = ModelCheckpoint('./'+select_model+'/'+select_model+'_weights.keras', monitor='val_loss', verbose=1, save_best_only=True)
     tensorboard = TensorBoard(log_dir='./'+select_model+'/logs/', histogram_freq=0, write_graph=True, write_images=False)
 
     all_exams = len(all_objs) 
