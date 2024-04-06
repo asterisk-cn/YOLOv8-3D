@@ -58,8 +58,8 @@ select_model = 'mobilenetv2'
 
 
 
-label_dir = '../3D-detection/KITTI3D/training/label_2/'
-image_dir = '../3D-detection/KITTI3D/training/image_2/'
+label_dir = '/mnt/dataset/kitti/training/label_2/'
+image_dir = '/mnt/dataset/kitti/training/image_2/'
 
 
 
