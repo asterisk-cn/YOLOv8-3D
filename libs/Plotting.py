@@ -1,15 +1,15 @@
-import os
-import cv2
-import numpy as np
-from enum import Enum
 import itertools
-
-from matplotlib.path import Path
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-from matplotlib.gridspec import GridSpec
-import matplotlib.patches as mpatches
+import os
 from collections import deque
+from enum import Enum
+
+import cv2
+import matplotlib.patches as patches
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.gridspec import GridSpec
+from matplotlib.path import Path
 
 """
 Script for handling calibration file
@@ -17,63 +17,67 @@ Script for handling calibration file
 
 import numpy as np
 
+
 def get_P(calib_file):
     """
     Get matrix P_rect_02 (camera 2 RGB)
     and transform to 3 x 4 matrix
     """
     for line in open(calib_file):
-        if 'P_rect_02' in line:
-            cam_P = line.strip().split(' ')
+        if "P_rect_02" in line:
+            cam_P = line.strip().split(" ")
             cam_P = np.asarray([float(cam_P) for cam_P in cam_P[1:]])
             matrix = np.zeros((3, 4))
             matrix = cam_P.reshape((3, 4))
             return matrix
 
-# TODO: understand this
 
 def get_calibration_cam_to_image(cab_f):
     for line in open(cab_f):
-        if 'P2:' in line:
-            cam_to_img = line.strip().split(' ')
+        if "P2:" in line:
+            cam_to_img = line.strip().split(" ")
             cam_to_img = np.asarray([float(number) for number in cam_to_img[1:]])
             cam_to_img = np.reshape(cam_to_img, (3, 4))
             return cam_to_img
 
     file_not_found(cab_f)
 
+
 def get_R0(cab_f):
     for line in open(cab_f):
-        if 'R0_rect:' in line:
-            R0 = line.strip().split(' ')
+        if "R0_rect:" in line:
+            R0 = line.strip().split(" ")
             R0 = np.asarray([float(number) for number in R0[1:]])
             R0 = np.reshape(R0, (3, 3))
 
-            R0_rect = np.zeros([4,4])
-            R0_rect[3,3] = 1
-            R0_rect[:3,:3] = R0
+            R0_rect = np.zeros([4, 4])
+            R0_rect[3, 3] = 1
+            R0_rect[:3, :3] = R0
 
             return R0_rect
 
+
 def get_tr_to_velo(cab_f):
     for line in open(cab_f):
-        if 'Tr_velo_to_cam:' in line:
-            Tr = line.strip().split(' ')
+        if "Tr_velo_to_cam:" in line:
+            Tr = line.strip().split(" ")
             Tr = np.asarray([float(number) for number in Tr[1:]])
             Tr = np.reshape(Tr, (3, 4))
 
-            Tr_to_velo = np.zeros([4,4])
-            Tr_to_velo[3,3] = 1
-            Tr_to_velo[:3,:4] = Tr
+            Tr_to_velo = np.zeros([4, 4])
+            Tr_to_velo[3, 3] = 1
+            Tr_to_velo[:3, :4] = Tr
 
             return Tr_to_velo
 
+
 def file_not_found(filename):
-    print("\nError! Can't read calibration file, does %s exist?"%filename)
+    print("\nError! Can't read calibration file, does %s exist?" % filename)
     exit()
 
 
 import numpy as np
+
 
 # using this math: https://en.wikipedia.org/wiki/Rotation_matrix
 def rotation_matrix(yaw, pitch=0, roll=0):
@@ -81,13 +85,19 @@ def rotation_matrix(yaw, pitch=0, roll=0):
     ty = yaw
     tz = pitch
 
-    Rx = np.array([[1,0,0], [0, np.cos(tx), -np.sin(tx)], [0, np.sin(tx), np.cos(tx)]])
-    Ry = np.array([[np.cos(ty), 0, np.sin(ty)], [0, 1, 0], [-np.sin(ty), 0, np.cos(ty)]])
-    Rz = np.array([[np.cos(tz), -np.sin(tz), 0], [np.sin(tz), np.cos(tz), 0], [0,0,1]])
+    Rx = np.array(
+        [[1, 0, 0], [0, np.cos(tx), -np.sin(tx)], [0, np.sin(tx), np.cos(tx)]]
+    )
+    Ry = np.array(
+        [[np.cos(ty), 0, np.sin(ty)], [0, 1, 0], [-np.sin(ty), 0, np.cos(ty)]]
+    )
+    Rz = np.array(
+        [[np.cos(tz), -np.sin(tz), 0], [np.sin(tz), np.cos(tz), 0], [0, 0, 1]]
+    )
 
-
-    return Ry.reshape([3,3])
+    return Ry.reshape([3, 3])
     # return np.dot(np.dot(Rz,Ry), Rx)
+
 
 # option to rotate and shift (for label info)
 def create_corners(dimension, location=None, R=None):
@@ -100,11 +110,11 @@ def create_corners(dimension, location=None, R=None):
     z_corners = []
 
     for i in [1, -1]:
-        for j in [1,-1]:
-            for k in [1,-1]:
-                x_corners.append(dx*i)
-                y_corners.append(dy*j)
-                z_corners.append(dz*k)
+        for j in [1, -1]:
+            for k in [1, -1]:
+                x_corners.append(dx * i)
+                y_corners.append(dy * j)
+                z_corners.append(dz * k)
 
     corners = [x_corners, y_corners, z_corners]
 
@@ -114,21 +124,21 @@ def create_corners(dimension, location=None, R=None):
 
     # shift if location is passed in
     if location is not None:
-        for i,loc in enumerate(location):
-            corners[i,:] = corners[i,:] + loc
+        for i, loc in enumerate(location):
+            corners[i, :] = corners[i, :] + loc
 
     final_corners = []
     for i in range(8):
         final_corners.append([corners[0][i], corners[1][i], corners[2][i]])
 
-
     return final_corners
+
 
 # this is based on the paper. Math!
 # calib is a 3x4 matrix, box_2d is [(xmin, ymin), (xmax, ymax)]
 # Math help: http://ywpkwon.github.io/pdf/bbox3d-study.pdf
 def calc_location(dimension, proj_matrix, box_2d, alpha, theta_ray):
-    #global orientation
+    # global orientation
     orient = alpha + theta_ray
     R = rotation_matrix(orient)
 
@@ -181,18 +191,18 @@ def calc_location(dimension, proj_matrix, box_2d, alpha, theta_ray):
 
     # left and right could either be the front of the car ot the back of the car
     # careful to use left and right based on image, no of actual car's left and right
-    for i in (-1,1):
-        left_constraints.append([left_mult * dx, i*dy, -switch_mult * dz])
-    for i in (-1,1):
-        right_constraints.append([right_mult * dx, i*dy, switch_mult * dz])
+    for i in (-1, 1):
+        left_constraints.append([left_mult * dx, i * dy, -switch_mult * dz])
+    for i in (-1, 1):
+        right_constraints.append([right_mult * dx, i * dy, switch_mult * dz])
 
     # top and bottom are easy, just the top and bottom of car
-    for i in (-1,1):
-        for j in (-1,1):
-            top_constraints.append([i*dx, -dy, j*dz])
-    for i in (-1,1):
-        for j in (-1,1):
-            bottom_constraints.append([i*dx, dy, j*dz])
+    for i in (-1, 1):
+        for j in (-1, 1):
+            top_constraints.append([i * dx, -dy, j * dz])
+    for i in (-1, 1):
+        for j in (-1, 1):
+            bottom_constraints.append([i * dx, dy, j * dz])
 
     # now, 64 combinations
     for left in left_constraints:
@@ -205,9 +215,9 @@ def calc_location(dimension, proj_matrix, box_2d, alpha, theta_ray):
     constraints = filter(lambda x: len(x) == len(set(tuple(i) for i in x)), constraints)
 
     # create pre M (the term with I and the R*X)
-    pre_M = np.zeros([4,4])
+    pre_M = np.zeros([4, 4])
     # 1's down diagonal
-    for i in range(0,4):
+    for i in range(0, 4):
         pre_M[i][i] = 1
 
     best_loc = None
@@ -235,29 +245,29 @@ def calc_location(dimension, proj_matrix, box_2d, alpha, theta_ray):
         M_array = [Ma, Mb, Mc, Md]
 
         # create A, b
-        A = np.zeros([4,3])
-        b = np.zeros([4,1])
+        A = np.zeros([4, 3])
+        b = np.zeros([4, 1])
 
-        indicies = [0,1,0,1]
+        indicies = [0, 1, 0, 1]
         for row, index in enumerate(indicies):
             X = X_array[row]
             M = M_array[row]
 
             # create M for corner Xx
             RX = np.dot(R, X)
-            M[:3,3] = RX.reshape(3)
+            M[:3, 3] = RX.reshape(3)
 
             M = np.dot(proj_matrix, M)
 
-            A[row, :] = M[index,:3] - box_corners[row] * M[2,:3]
-            b[row] = box_corners[row] * M[2,3] - M[index,3]
+            A[row, :] = M[index, :3] - box_corners[row] * M[2, :3]
+            b[row] = box_corners[row] * M[2, 3] - M[index, 3]
 
         # solve here with least squares, since over fit will get some error
         loc, error, rank, s = np.linalg.lstsq(A, b, rcond=None)
 
         # found a better estimation
         if error < best_error:
-            count += 1 # for debugging
+            count += 1  # for debugging
             best_loc = loc
             best_error = error
             best_X = X_array
@@ -267,11 +277,7 @@ def calc_location(dimension, proj_matrix, box_2d, alpha, theta_ray):
     return best_loc, best_X
 
 
-
-
 ##########################
-
-
 
 
 def get_new_alpha(alpha):
@@ -280,13 +286,14 @@ def get_new_alpha(alpha):
     :param alpha: original orientation in KITTI
     :return: new alpha
     """
-    new_alpha = float(alpha) + np.pi / 2.
+    new_alpha = float(alpha) + np.pi / 2.0
     if new_alpha < 0:
-        new_alpha = new_alpha + 2. * np.pi
+        new_alpha = new_alpha + 2.0 * np.pi
         # make sure angle lies in [0, 2pi]
-    new_alpha = new_alpha - int(new_alpha / (2. * np.pi)) * (2. * np.pi)
+    new_alpha = new_alpha - int(new_alpha / (2.0 * np.pi)) * (2.0 * np.pi)
 
     return new_alpha
+
 
 def recover_angle(bin_anchor, bin_confidence, bin_num):
     # select anchor from bins
@@ -333,23 +340,30 @@ def compute_orientaion(P2, obj):
 def translation_constraints(P2, obj, rot_local):
     bbox = [obj.xmin, obj.ymin, obj.xmax, obj.ymax]
     # rotation matrix
-    R = np.array([[ np.cos(obj.rot_global), 0,  np.sin(obj.rot_global)],
-                  [          0,             1,             0          ],
-                  [-np.sin(obj.rot_global), 0,  np.cos(obj.rot_global)]])
+    R = np.array(
+        [
+            [np.cos(obj.rot_global), 0, np.sin(obj.rot_global)],
+            [0, 1, 0],
+            [-np.sin(obj.rot_global), 0, np.cos(obj.rot_global)],
+        ]
+    )
     A = np.zeros((4, 3))
     b = np.zeros((4, 1))
     I = np.identity(3)
 
-    xmin_candi, xmax_candi, ymin_candi, ymax_candi = obj.box3d_candidate(rot_local, soft_range=8)
+    xmin_candi, xmax_candi, ymin_candi, ymax_candi = obj.box3d_candidate(
+        rot_local, soft_range=8
+    )
 
-    X  = np.bmat([xmin_candi, xmax_candi,
-                  ymin_candi, ymax_candi])
+    X = np.bmat([xmin_candi, xmax_candi, ymin_candi, ymax_candi])
     # X: [x, y, z] in object coordinate
-    X = X.reshape(4,3).T
+    X = X.reshape(4, 3).T
 
     # construct equation (4, 3)
     for i in range(4):
-        matrice = np.bmat([[I, np.matmul(R, X[:,i])], [np.zeros((1,3)), np.ones((1,1))]])
+        matrice = np.bmat(
+            [[I, np.matmul(R, X[:, i])], [np.zeros((1, 3)), np.ones((1, 1))]]
+        )
         M = np.matmul(P2, matrice)
 
         if i % 2 == 0:
@@ -366,30 +380,25 @@ def translation_constraints(P2, obj, rot_local):
     return tx, ty, tz
 
 
-
-
-
-
-
-
 line_thickness = 3
 
 
 class cv_colors(Enum):
-    RED = (0,0,255)
-    GREEN = (0,255,0)
-    BLUE = (255,0,0)
-    PURPLE = (247,44,200)
-    ORANGE = (44,162,247)
-    MINT = (239,255,66)
-    YELLOW = (2,255,250)
+    RED = (0, 0, 255)
+    GREEN = (0, 255, 0)
+    BLUE = (255, 0, 0)
+    PURPLE = (247, 44, 200)
+    ORANGE = (44, 162, 247)
+    MINT = (239, 255, 66)
+    YELLOW = (2, 255, 250)
+
 
 def constraint_to_color(constraint_idx):
     return {
-        0 : cv_colors.PURPLE.value, #left
-        1 : cv_colors.ORANGE.value, #top
-        2 : cv_colors.MINT.value, #right
-        3 : cv_colors.YELLOW.value #bottom
+        0: cv_colors.PURPLE.value,  # left
+        1: cv_colors.ORANGE.value,  # top
+        2: cv_colors.MINT.value,  # right
+        3: cv_colors.YELLOW.value,  # bottom
     }[constraint_idx]
 
 
@@ -414,28 +423,34 @@ def project_3d_pt(pt, cam_to_img, calib_file=None):
         cam_to_img = get_calibration_cam_to_image(calib_file)
         R0_rect = get_R0(calib_file)
         Tr_velo_to_cam = get_tr_to_velo(calib_file)
-
     point = np.array(pt)
     point = np.append(point, 1)
 
     point = np.dot(cam_to_img, point)
     # point = np.dot(np.dot(np.dot(cam_to_img, R0_rect), Tr_velo_to_cam), point)
 
-    point = point[:2]/point[2]
+    point = point[:2] / point[2]
     point = point.astype(np.int16)
 
     return point
 
 
-
 # take in 3d points and plot them on image as red circles
-def plot_3d_pts(img, pts, center, calib_file=None, cam_to_img=None, relative=False, constraint_idx=None):
+def plot_3d_pts(
+    img,
+    pts,
+    center,
+    calib_file=None,
+    cam_to_img=None,
+    relative=False,
+    constraint_idx=None,
+):
     if calib_file is not None:
         cam_to_img = get_calibration_cam_to_image(calib_file)
 
     for pt in pts:
         if relative:
-            pt = [i + center[j] for j,i in enumerate(pt)] # more pythonic
+            pt = [i + center[j] for j, i in enumerate(pt)]  # more pythonic
 
         point = project_3d_pt(pt, cam_to_img)
 
@@ -447,9 +462,6 @@ def plot_3d_pts(img, pts, center, calib_file=None, cam_to_img=None, relative=Fal
         cv2.circle(img, (point[0], point[1]), 5, color, thickness=-1)
 
 
-
-
-
 def plot_3d_box(img, cam_to_img, ry, dimension, center):
 
     # plot_3d_pts(img, [center], center, calib_file=calib_file, cam_to_img=cam_to_img)
@@ -458,7 +470,7 @@ def plot_3d_box(img, cam_to_img, ry, dimension, center):
     corners = create_corners(dimension, location=center, R=R)
 
     # to see the corners on image as red circles
-    # plot_3d_pts(img, corners, center,cam_to_img=cam_to_img, relative=False)
+    # plot_3d_pts(img, corners, center, cam_to_img=cam_to_img, relative=False)
 
     box_3d = []
     color = (20, 255, 20)
@@ -466,17 +478,64 @@ def plot_3d_box(img, cam_to_img, ry, dimension, center):
         point = project_3d_pt(corner, cam_to_img)
         box_3d.append(point)
 
-    #LINE
-    cv2.line(img, (box_3d[0][0], box_3d[0][1]), (box_3d[2][0],box_3d[2][1]), color, line_thickness)
-    cv2.line(img, (box_3d[4][0], box_3d[4][1]), (box_3d[6][0],box_3d[6][1]), color, line_thickness)
-    cv2.line(img, (box_3d[0][0], box_3d[0][1]), (box_3d[4][0],box_3d[4][1]), color, line_thickness)
-    cv2.line(img, (box_3d[2][0], box_3d[2][1]), (box_3d[6][0],box_3d[6][1]), color, line_thickness)
+    # LINE
+    cv2.line(
+        img,
+        (box_3d[0][0], box_3d[0][1]),
+        (box_3d[2][0], box_3d[2][1]),
+        color,
+        line_thickness,
+    )
+    cv2.line(
+        img,
+        (box_3d[4][0], box_3d[4][1]),
+        (box_3d[6][0], box_3d[6][1]),
+        color,
+        line_thickness,
+    )
+    cv2.line(
+        img,
+        (box_3d[0][0], box_3d[0][1]),
+        (box_3d[4][0], box_3d[4][1]),
+        color,
+        line_thickness,
+    )
+    cv2.line(
+        img,
+        (box_3d[2][0], box_3d[2][1]),
+        (box_3d[6][0], box_3d[6][1]),
+        color,
+        line_thickness,
+    )
 
-    cv2.line(img, (box_3d[1][0], box_3d[1][1]), (box_3d[3][0],box_3d[3][1]), color, line_thickness)
-    cv2.line(img, (box_3d[1][0], box_3d[1][1]), (box_3d[5][0],box_3d[5][1]), color, line_thickness)
-    cv2.line(img, (box_3d[7][0], box_3d[7][1]), (box_3d[3][0],box_3d[3][1]), color, line_thickness)
-    cv2.line(img, (box_3d[7][0], box_3d[7][1]), (box_3d[5][0],box_3d[5][1]), color, line_thickness)
-
+    cv2.line(
+        img,
+        (box_3d[1][0], box_3d[1][1]),
+        (box_3d[3][0], box_3d[3][1]),
+        color,
+        line_thickness,
+    )
+    cv2.line(
+        img,
+        (box_3d[1][0], box_3d[1][1]),
+        (box_3d[5][0], box_3d[5][1]),
+        color,
+        line_thickness,
+    )
+    cv2.line(
+        img,
+        (box_3d[7][0], box_3d[7][1]),
+        (box_3d[3][0], box_3d[3][1]),
+        color,
+        line_thickness,
+    )
+    cv2.line(
+        img,
+        (box_3d[7][0], box_3d[7][1]),
+        (box_3d[5][0], box_3d[5][1]),
+        color,
+        line_thickness,
+    )
 
     cv2.line(img, tuple(box_3d[0]), tuple(box_3d[1]), color, line_thickness)
     cv2.line(img, tuple(box_3d[2]), tuple(box_3d[3]), color, line_thickness)
@@ -488,8 +547,6 @@ def plot_3d_box(img, cam_to_img, ry, dimension, center):
     cv2.line(img, tuple(box_3d[2]), tuple(box_3d[6]), color, line_thickness)
     cv2.line(img, tuple(box_3d[3]), tuple(box_3d[7]), color, line_thickness)
 
-
-
     # cv2.line(img, tuple(box_3d[1]), tuple(box_3d[2]), (0, 255, 0), line_thickness)
     # cv2.line(img, tuple(box_3d[3]), tuple(box_3d[0]), (0, 255, 0), line_thickness)
     # cv2.line(img, tuple(box_3d[5]), tuple(box_3d[6]), (0, 255, 0), line_thickness)
@@ -500,28 +557,33 @@ def plot_3d_box(img, cam_to_img, ry, dimension, center):
     # cv2.line(img, tuple(box_3d[2]), tuple(box_3d[4]), (0, 255, 0), line_thickness)
     # cv2.line(img, tuple(box_3d[3]), tuple(box_3d[5]), (0, 255, 0), line_thickness)
 
-
-
-    for i in range(0,7,2):
-        cv2.line(img, (box_3d[i][0], box_3d[i][1]), (box_3d[i+1][0],box_3d[i+1][1]), cv_colors.GREEN.value, 1)
+    for i in range(0, 7, 2):
+        cv2.line(
+            img,
+            (box_3d[i][0], box_3d[i][1]),
+            (box_3d[i + 1][0], box_3d[i + 1][1]),
+            cv_colors.GREEN.value,
+            1,
+        )
 
     # frame to drawing polygon
     frame = np.zeros_like(img, np.uint8)
 
     # front side
-    cv2.fillPoly(frame, np.array([[[box_3d[0]], [box_3d[1]], [box_3d[3]], [box_3d[2]]]], dtype=np.int32), cv_colors.BLUE.value)
+    cv2.fillPoly(
+        frame,
+        np.array(
+            [[[box_3d[0]], [box_3d[1]], [box_3d[3]], [box_3d[2]]]], dtype=np.int32
+        ),
+        cv_colors.BLUE.value,
+    )
     # center_x = (box_3d[0][0] + box_3d[1][0] + box_3d[2][0] + box_3d[3][0]) / 4
     # center_y = (box_3d[0][1] + box_3d[1][1] + box_3d[2][1] + box_3d[3][1]) / 4
     # cv2.circle(frame, (int(center_x), int(center_y)), 8, (0, 255, 255), -1)
 
-
     alpha = 0.6
     mask = frame.astype(bool)
     img[mask] = cv2.addWeighted(img, alpha, frame, 1 - alpha, 0)[mask]
-
-
-
-
 
 
 def plot_2d_box(img, box_2d):
@@ -535,15 +597,13 @@ def plot_2d_box(img, box_2d):
     cv2.line(img, pt4, pt1, cv_colors.BLUE.value, line_thickness)
 
 
-
-
 class Plot3DBoxBev:
     """Plot 3D bounding box and bird eye view"""
+
     def __init__(
         self,
-        proj_matrix = None, # projection matrix P2
-        object_list = ["car", "pedestrian", "truck", "cyclist", "motorcycle", "bus"],
-        
+        proj_matrix=None,  # projection matrix P2
+        object_list=["car", "pedestrian", "truck", "cyclist", "motorcycle", "bus"],
     ) -> None:
 
         self.proj_matrix = proj_matrix
@@ -569,7 +629,6 @@ class Plot3DBoxBev:
         }
         plt.close(self.fig)  # Close the figure
 
-        
     def compute_bev(self, dim, loc, rot_y):
         """compute bev"""
         # convert dimension, location and rotation
@@ -578,8 +637,8 @@ class Plot3DBoxBev:
         l = dim[2] * self.scale
         x = loc[0] * self.scale
         y = loc[1] * self.scale
-        z = loc[2] * self.scale 
-        rot_y = np.float64(rot_y*-1)
+        z = loc[2] * self.scale
+        rot_y = np.float64(rot_y * -1)
 
         # Scale up or down the dimensions to make the object appear closer
         scale_factor = 1.2  # Adjust this value as needed
@@ -587,9 +646,10 @@ class Plot3DBoxBev:
         w *= scale_factor
         l *= scale_factor
 
-
         # R = np.array([[-np.cos(rot_y), np.sin(rot_y)], [np.sin(rot_y), np.cos(rot_y)]])
-        R = np.array([[+np.cos(rot_y), -np.sin(rot_y)], [+np.sin(rot_y), np.cos(rot_y)]])
+        R = np.array(
+            [[+np.cos(rot_y), -np.sin(rot_y)], [+np.sin(rot_y), np.cos(rot_y)]]
+        )
 
         t = np.array([x, z]).reshape(1, 2).T
         x_corners = [0, l, l, 0]  # -l/2
@@ -612,6 +672,7 @@ class Plot3DBoxBev:
 
     global tracking_trajectories
     tracking_trajectories = {}
+
     def draw_bev(self, dim, loc, rot_y, class_object, objId):
         color = self.COLOR[class_object]
         """draw bev"""
@@ -631,10 +692,11 @@ class Plot3DBoxBev:
             self.ax2.text(
                 pred_corners_2d[0, 0],
                 pred_corners_2d[0, 1],
-                f"z: {loc[2]:.1f}"+' '+str(int(objId[0])),
+                f"z: {loc[2]:.1f}" + " " + str(int(objId[0])),
                 fontsize=8,
                 color="white",
-                bbox=dict(facecolor="green", alpha=0.4, pad=0.5))
+                bbox=dict(facecolor="green", alpha=0.4, pad=0.5),
+            )
             centroids, ids = self.calculate_centroid(pred_corners_2d, int(objId[0]))
             # Append centroid to tracking_points
             if objId[0] is not None and int(objId[0]) not in tracking_trajectories:
@@ -651,7 +713,8 @@ class Plot3DBoxBev:
                 f"z: {loc[2]:.1f}",
                 fontsize=8,
                 color="white",
-                bbox=dict(facecolor="green", alpha=0.4, pad=0.5))
+                bbox=dict(facecolor="green", alpha=0.4, pad=0.5),
+            )
 
     def calculate_centroid(self, vertices, obj_id):
         x_sum = np.sum(vertices[:, 0])
@@ -659,8 +722,6 @@ class Plot3DBoxBev:
         centroid_x = x_sum / len(vertices)
         centroid_y = y_sum / len(vertices)
         return ((centroid_x, centroid_y), obj_id)
-
-
 
     def compute_3dbox(self, bbox, dim, loc, rot_y):
         """compute 3d box"""
@@ -672,7 +733,13 @@ class Plot3DBoxBev:
         h, w, l = dim[0], dim[1], dim[2]
         x, y, z = loc[0], loc[1], loc[2]
 
-        R = np.array([[np.cos(rot_y), 0, np.sin(rot_y)], [0, 1, 0], [-np.sin(rot_y), 0, np.cos(rot_y)]])
+        R = np.array(
+            [
+                [np.cos(rot_y), 0, np.sin(rot_y)],
+                [0, 1, 0],
+                [-np.sin(rot_y), 0, np.cos(rot_y)],
+            ]
+        )
         x_corners = [0, l, l, l, l, 0, 0, 0]  # -l/2
         y_corners = [0, 0, h, h, 0, 0, h, h]  # -h
         z_corners = [0, 0, 0, w, w, w, w, 0]  # -w/2
@@ -710,7 +777,9 @@ class Plot3DBoxBev:
         width = corners_2D[:, 3][0] - corners_2D[:, 1][0]
         height = corners_2D[:, 2][1] - corners_2D[:, 1][1]
         # put a mask on the front
-        front_fill = patches.Rectangle((corners_2D[:, 1]), width, height, fill=True, color=color, alpha=0.2)
+        front_fill = patches.Rectangle(
+            (corners_2D[:, 1]), width, height, fill=True, color=color, alpha=0.2
+        )
         self.ax.add_patch(patch)
         self.ax.add_patch(front_fill)
 
@@ -718,7 +787,9 @@ class Plot3DBoxBev:
         center_x = corners_2D[:, 1][0] + width / 2
         center_y = corners_2D[:, 1][1] + height / 2
         radius = min(width, height) / 20
-        circle = plt.Circle((center_x, center_y), radius, fill=True, color='white', alpha=0.5)
+        circle = plt.Circle(
+            (center_x, center_y), radius, fill=True, color="white", alpha=0.5
+        )
         self.ax.add_patch(circle)
 
         # # draw text of location, dimension, and rotation
@@ -730,30 +801,28 @@ class Plot3DBoxBev:
         #     color="white",
         #     bbox=dict(facecolor=color, alpha=0.2, pad=0.5),
         # )
+
     def plot(
         self,
-        img = None,
+        img=None,
         class_object: str = None,
-        bbox = None, # bbox 2d [xmin, ymin, xmax, ymax]
-        dim = None, # dimension of the box (l, w, h)
-        loc = None, # location of the box (x, y, z)
-        rot_y = None, # rotation of the box around y-axis
-        objId = None, # objids
+        bbox=None,  # bbox 2d [xmin, ymin, xmax, ymax]
+        dim=None,  # dimension of the box (l, w, h)
+        loc=None,  # location of the box (x, y, z)
+        rot_y=None,  # rotation of the box around y-axis
+        objId=None,  # objids
     ):
         """plot 3d bbox and bev"""
         # initialize bev image
         img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         bev_img = np.zeros((self.shape, self.shape, 3), np.uint8)
-        self.draw_range(img, bev_img) #camera range
+        self.draw_range(img, bev_img)  # camera range
 
         # self.draw_centroid_trajectories(bev_img)
         # loop through all detections
         if class_object in self.object_list:
             # self.draw_3dbox(class_object, bbox, dim, loc, rot_y)
             self.draw_bev(dim, loc, rot_y, class_object, objId)
-
-
-
 
     def save_plot(self, path, name):
         self.fig.savefig(
@@ -763,17 +832,15 @@ class Plot3DBoxBev:
             pad_inches=0.0,
         )
 
-
     def show_result(self):
         # Draw the Matplotlib figure
         self.fig.canvas.draw()
 
         # Convert the figure to an image array
-        image = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+        image = np.fromstring(self.fig.canvas.tostring_rgb(), dtype=np.uint8, sep="")
         image = image.reshape(self.fig.canvas.get_width_height()[::-1] + (3,))
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         return image
-
 
     def draw_range(self, img, bev_img):
 
@@ -793,10 +860,10 @@ class Plot3DBoxBev:
         legend_labels = list(self.COLOR.keys())
 
         # Create custom legend entries with colored rectangles
-        legend_entries = [mpatches.Rectangle((0, 0), 1, 1, fc=color, edgecolor='none', label=label) 
-                          for color, label in zip(legend_colors, legend_labels)]
-
-
+        legend_entries = [
+            mpatches.Rectangle((0, 0), 1, 1, fc=color, edgecolor="none", label=label)
+            for color, label in zip(legend_colors, legend_labels)
+        ]
 
         # Draw the circles on bev_img
         # Define circle parameters
@@ -807,16 +874,31 @@ class Plot3DBoxBev:
             radius = (i + 1) * radius_increment
             linewidth = (num_circles - i) * 2  # Varying linewidth
 
-            cv2.circle(bev_img, (int(center[0] * self.shape), int(center[1] * self.shape)), int(radius * self.shape), (150, 10, 0), linewidth)
-            circle = plt.Circle(center, radius, fill=False, color='blue')
+            cv2.circle(
+                bev_img,
+                (int(center[0] * self.shape), int(center[1] * self.shape)),
+                int(radius * self.shape),
+                (150, 10, 0),
+                linewidth,
+            )
+            circle = plt.Circle(center, radius, fill=False, color="blue")
             self.ax2.add_patch(circle)
 
-            text_content = f'{round((i + 1) * 9.6, 2)} m'
-            text_position = ( 30 , center[1] * self.shape + radius * self.shape + 10)  # Adjusted position
+            text_content = f"{round((i + 1) * 9.6, 2)} m"
+            text_position = (
+                30,
+                center[1] * self.shape + radius * self.shape + 10,
+            )  # Adjusted position
             # print(text_position)
-            self.ax2.text(text_position[0], text_position[1], text_content, color='white', fontsize=6, va='center', ha='center')
-
-
+            self.ax2.text(
+                text_position[0],
+                text_position[1],
+                text_content,
+                color="white",
+                fontsize=6,
+                va="center",
+                ha="center",
+            )
 
         # ## draw  objects trajectories
         # obj_id = None
@@ -826,7 +908,6 @@ class Plot3DBoxBev:
         #         start_point = tuple(map(int, centroids_list[i - 1]))
         #         end_point = tuple(map(int, centroids_list[i]))
         #         cv2.line(bev_img, start_point, end_point, (0, 255, 0), 2)
-
 
         # Get the last three object IDs
         last_three_obj_ids = list(tracking_trajectories.keys())[-3:]
@@ -844,21 +925,30 @@ class Plot3DBoxBev:
             if obj_id not in last_three_obj_ids:
                 tracking_trajectories[obj_id].clear()
 
-
         # plot camera view range
         x1 = np.linspace(0, self.shape / 2)
         x2 = np.linspace(self.shape / 2, self.shape)
-        self.ax2.plot(x1, self.shape / 2 - x1, ls="--", color="grey", linewidth=3, alpha=0.3)
-        self.ax2.plot(x2, x2 - self.shape / 2, ls="--", color="grey", linewidth=3, alpha=0.3)
-        self.ax2.plot(self.shape / 2,40 , marker="+", markersize=16, markeredgecolor="red")
+        self.ax2.plot(
+            x1, self.shape / 2 - x1, ls="--", color="grey", linewidth=3, alpha=0.3
+        )
+        self.ax2.plot(
+            x2, x2 - self.shape / 2, ls="--", color="grey", linewidth=3, alpha=0.3
+        )
+        self.ax2.plot(
+            self.shape / 2, 40, marker="+", markersize=16, markeredgecolor="red"
+        )
 
         # Display the image
         self.ax2.imshow(bev_img, origin="lower")
         self.ax2.set_xticks([])
         self.ax2.set_yticks([])
-        self.ax2.set_aspect('equal', adjustable='box')
-        self.ax2.legend(handles=legend_entries, loc='lower right', fontsize='x-small', framealpha=0.7)
-
+        self.ax2.set_aspect("equal", adjustable="box")
+        self.ax2.legend(
+            handles=legend_entries,
+            loc="lower right",
+            fontsize="x-small",
+            framealpha=0.7,
+        )
 
     # def save_plot(self, path1, path2, name):
     #     self.fig.savefig(
