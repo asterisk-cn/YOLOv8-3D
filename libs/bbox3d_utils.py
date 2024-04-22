@@ -864,7 +864,6 @@ def calc_location_(dimension, proj_matrix, box_2d, alpha, theta_ray):
 def plot3d(img, proj_matrix, box_2d, dimensions, alpha, theta_ray, img_2d=None):
 
     # the math! returns X, the corners used for constraint
-    # alpha = alpha - theta_ray
     location, X = calc_location_(dimensions, proj_matrix, box_2d, alpha, theta_ray)
     orient = alpha + theta_ray
     if img_2d is not None:
